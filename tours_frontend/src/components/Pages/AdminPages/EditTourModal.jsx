@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Upload, Plus, Minus } from 'lucide-react';
 
 const EditTourModal = ({ 
@@ -18,6 +18,74 @@ const EditTourModal = ({
   setImage2File,
   loading,
 }) => {
+  const [errors, setErrors] = useState({});
+
+  // Reset errors when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setErrors({});
+    }
+  }, [isOpen]);
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!editFormData.tourName?.trim()) {
+      newErrors.tourName = 'Tour name is required';
+    }
+
+    if (!editFormData.tourDescription?.trim()) {
+      newErrors.tourDescription = 'Tour description is required';
+    }
+
+    if (!editFormData.tourGuide?.trim()) {
+      newErrors.tourGuide = 'Tour guide is required';
+    }
+
+    if (!editFormData.price || editFormData.price <= 0) {
+      newErrors.price = 'Valid price is required';
+    }
+
+    if (!editFormData.startDate) {
+      newErrors.startDate = 'Start date is required';
+    }
+
+    if (!editFormData.endDate) {
+      newErrors.endDate = 'End date is required';
+    }
+
+    if (editFormData.startDate && editFormData.endDate) {
+      if (new Date(editFormData.startDate) >= new Date(editFormData.endDate)) {
+        newErrors.endDate = 'End date must be after start date';
+      }
+    }
+
+    if (!editFormData.ticketsAvailable || editFormData.ticketsAvailable <= 0) {
+      newErrors.ticketsAvailable = 'Valid number of tickets is required';
+    }
+
+    if (!editFormData.meals || editFormData.meals.length === 0) {
+      newErrors.meals = 'At least one meal is required';
+    } else if (editFormData.meals.some(meal => !meal.trim())) {
+      newErrors.meals = 'All meals must have a value';
+    }
+
+    if (!editFormData.activities || editFormData.activities.length === 0) {
+      newErrors.activities = 'At least one activity is required';
+    } else if (editFormData.activities.some(activity => !activity.trim())) {
+      newErrors.activities = 'All activities must have a value';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleUpdate = () => {
+    if (validateForm()) {
+      onUpdate();
+    }
+  };
+
   const addMeal = () => {
     setEditFormData((prev) => ({
       ...prev,
@@ -67,6 +135,10 @@ const EditTourModal = ({
       ...prev,
       [field]: e.target.value
     }));
+    // Clear error for this field when user types
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: undefined }));
+    }
   };
 
   if (!isOpen) return null;
@@ -146,24 +218,34 @@ const EditTourModal = ({
             </div>
           </div>
 
-          <input
-            type="text"
-            placeholder="Tour Name"
-            value={editFormData.tourName}
-            onChange={handleInputChange('tourName')}
-            className="w-full p-2 border rounded-md"
-          />
-          <textarea
-            placeholder="Tour Description"
-            value={editFormData.tourDescription}
-            onChange={(e) =>
-              setEditFormData({
-                ...editFormData,
-                tourDescription: e.target.value,
-              })
-            }
-            className="w-full h-24 p-2 border rounded-md"
-          />
+          <div>
+            <input
+              type="text"
+              placeholder="Tour Name"
+              value={editFormData.tourName}
+              onChange={handleInputChange('tourName')}
+              className={`w-full p-2 border rounded-md ${errors.tourName ? 'border-red-500' : ''}`}
+            />
+            {errors.tourName && <p className="mt-1 text-sm text-red-500">{errors.tourName}</p>}
+          </div>
+
+          <div>
+            <textarea
+              placeholder="Tour Description"
+              value={editFormData.tourDescription}
+              onChange={(e) => {
+                setEditFormData({
+                  ...editFormData,
+                  tourDescription: e.target.value,
+                });
+                if (errors.tourDescription) {
+                  setErrors(prev => ({ ...prev, tourDescription: undefined }));
+                }
+              }}
+              className={`w-full h-24 p-2 border rounded-md ${errors.tourDescription ? 'border-red-500' : ''}`}
+            />
+            {errors.tourDescription && <p className="mt-1 text-sm text-red-500">{errors.tourDescription}</p>}
+          </div>
 
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -182,7 +264,12 @@ const EditTourModal = ({
                     type="text"
                     placeholder={`Meal ${index + 1}`}
                     value={meal}
-                    onChange={(e) => updateMeal(index, e.target.value)}
+                    onChange={(e) => {
+                      updateMeal(index, e.target.value);
+                      if (errors.meals) {
+                        setErrors(prev => ({ ...prev, meals: undefined }));
+                      }
+                    }}
                     className="flex-grow p-2 border rounded-md"
                   />
                   <button
@@ -193,6 +280,7 @@ const EditTourModal = ({
                   </button>
                 </div>
               ))}
+            {errors.meals && <p className="mt-1 text-sm text-red-500">{errors.meals}</p>}
           </div>
 
           {/* Activities Section */}
@@ -213,7 +301,12 @@ const EditTourModal = ({
                     type="text"
                     placeholder={`Activity ${index + 1}`}
                     value={activity}
-                    onChange={(e) => updateActivity(index, e.target.value)}
+                    onChange={(e) => {
+                      updateActivity(index, e.target.value);
+                      if (errors.activities) {
+                        setErrors(prev => ({ ...prev, activities: undefined }));
+                      }
+                    }}
                     className="flex-grow p-2 border rounded-md"
                   />
                   <button
@@ -224,67 +317,96 @@ const EditTourModal = ({
                   </button>
                 </div>
               ))}
+            {errors.activities && <p className="mt-1 text-sm text-red-500">{errors.activities}</p>}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <input
-              type="text"
-              placeholder="Tour Guide"
-              value={editFormData.tourGuide}
-              onChange={(e) =>
-                setEditFormData({ ...editFormData, tourGuide: e.target.value })
-              }
-              className="w-full p-2 border rounded-md"
-            />
-            <input
-              type="number"
-              placeholder="Price"
-              value={editFormData.price}
-              onChange={(e) =>
-                setEditFormData({ ...editFormData, price: e.target.value })
-              }
-              className="w-full p-2 border rounded-md"
-            />
+            <div>
+              <input
+                type="text"
+                placeholder="Tour Guide"
+                value={editFormData.tourGuide}
+                onChange={(e) => {
+                  setEditFormData({ ...editFormData, tourGuide: e.target.value });
+                  if (errors.tourGuide) {
+                    setErrors(prev => ({ ...prev, tourGuide: undefined }));
+                  }
+                }}
+                className={`w-full p-2 border rounded-md ${errors.tourGuide ? 'border-red-500' : ''}`}
+              />
+              {errors.tourGuide && <p className="mt-1 text-sm text-red-500">{errors.tourGuide}</p>}
+            </div>
+            <div>
+              <input
+                type="number"
+                placeholder="Price"
+                value={editFormData.price}
+                onChange={(e) => {
+                  setEditFormData({ ...editFormData, price: e.target.value });
+                  if (errors.price) {
+                    setErrors(prev => ({ ...prev, price: undefined }));
+                  }
+                }}
+                className={`w-full p-2 border rounded-md ${errors.price ? 'border-red-500' : ''}`}
+              />
+              {errors.price && <p className="mt-1 text-sm text-red-500">{errors.price}</p>}
+            </div>
           </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block mb-1 text-sm">Start Date</label>
               <input
                 type="date"
                 value={editFormData.startDate}
-                onChange={(e) =>
+                onChange={(e) => {
                   setEditFormData({
                     ...editFormData,
                     startDate: e.target.value,
-                  })
-                }
-                className="w-full p-2 border rounded-md"
+                  });
+                  if (errors.startDate) {
+                    setErrors(prev => ({ ...prev, startDate: undefined }));
+                  }
+                }}
+                className={`w-full p-2 border rounded-md ${errors.startDate ? 'border-red-500' : ''}`}
               />
+              {errors.startDate && <p className="mt-1 text-sm text-red-500">{errors.startDate}</p>}
             </div>
             <div>
               <label className="block mb-1 text-sm">End Date</label>
               <input
                 type="date"
                 value={editFormData.endDate}
-                onChange={(e) =>
-                  setEditFormData({ ...editFormData, endDate: e.target.value })
-                }
-                className="w-full p-2 border rounded-md"
+                onChange={(e) => {
+                  setEditFormData({ ...editFormData, endDate: e.target.value });
+                  if (errors.endDate) {
+                    setErrors(prev => ({ ...prev, endDate: undefined }));
+                  }
+                }}
+                className={`w-full p-2 border rounded-md ${errors.endDate ? 'border-red-500' : ''}`}
               />
+              {errors.endDate && <p className="mt-1 text-sm text-red-500">{errors.endDate}</p>}
             </div>
           </div>
-          <input
-            type="number"
-            placeholder="Tickets Available"
-            value={editFormData.ticketsAvailable}
-            onChange={(e) =>
-              setEditFormData({
-                ...editFormData,
-                ticketsAvailable: e.target.value,
-              })
-            }
-            className="w-full p-2 border rounded-md"
-          />
+
+          <div>
+            <input
+              type="number"
+              placeholder="Tickets Available"
+              value={editFormData.ticketsAvailable}
+              onChange={(e) => {
+                setEditFormData({
+                  ...editFormData,
+                  ticketsAvailable: e.target.value,
+                });
+                if (errors.ticketsAvailable) {
+                  setErrors(prev => ({ ...prev, ticketsAvailable: undefined }));
+                }
+              }}
+              className={`w-full p-2 border rounded-md ${errors.ticketsAvailable ? 'border-red-500' : ''}`}
+            />
+            {errors.ticketsAvailable && <p className="mt-1 text-sm text-red-500">{errors.ticketsAvailable}</p>}
+          </div>
         </div>
 
         <div className="flex justify-end mt-6 space-x-4">
@@ -295,11 +417,11 @@ const EditTourModal = ({
             Cancel
           </button>
           <button
-            onClick={onUpdate}
-            className="px-4 py-2 text-white bg-blue-500 rounded-md hover:bg-blue-600"
+            onClick={handleUpdate}
+            disabled={loading}
+            className="px-4 py-2 text-white bg-blue-500 rounded-md hover:bg-blue-600 disabled:bg-blue-300 disabled:cursor-not-allowed"
           >
-            {loading?"updating...":"update Tour"}
-            {/* Update Tour */}
+            {loading ? "Updating..." : "Update Tour"}
           </button>
         </div>
       </div>
